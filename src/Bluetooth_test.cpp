@@ -10,11 +10,14 @@
 // const int BLUE_LED_PIN = 6;
 // const int PULSE_LED_PIN = 13;
 
-#define RED_LED_PIN 3
-#define GREEN_LED_PIN 5
-#define BLUE_LED_PIN 6
-#define PULSE_LED_PIN 13
-#define PUSH_BUTTON 2
+const int RED_LED_PIN = 3;
+const int GREEN_LED_PIN = 5;
+const int BLUE_LED_PIN = 6;
+const int PULSE_LED_PIN = 13;
+const int PUSH_BUTTON = 2;
+const int ldr_pin = 7;
+const byte rxPin = 9;
+const byte txPin = 8;
 
 void setLeds(String message);
 String getNextNumber(String text, unsigned int cursor);
@@ -23,9 +26,8 @@ int scaleToRBG(int initial);
 void checkBluetooth();
 void sendHeartbeat(int buttonState, int lightSensorState);
 int readButton();
+void turnOnLed(int ledOnOff);
 
-const byte rxPin = 9;
-const byte txPin = 8;
 SoftwareSerial BTSerial(rxPin, txPin); // RX TX
 
 // message tokens
@@ -42,6 +44,7 @@ void setup() {
     pinMode(RED_LED_PIN, OUTPUT);
     pinMode(RED_LED_PIN, OUTPUT);
     pinMode(BLUE_LED_PIN, OUTPUT);
+    pinMode(ldr_pin,INPUT);
 
     pinMode(PUSH_BUTTON, INPUT_PULLUP);
 
@@ -49,29 +52,58 @@ void setup() {
     Serial.begin(9600);
     pinMode(PULSE_LED_PIN, OUTPUT);
     setRGB(0,0,0);
+    Serial.println(F(__FILE__ " " __DATE__ " " __TIME__));
 }
 
 
 void loop() {
 
-    static int buttonState = 0; 
+    static int ledOnOff = 0; 
     static int lightSensorState = 0; 
 
     checkBluetooth();
+    ledOnOff = readButton();
+    turnOnLed(ledOnOff);
+    lightSensorState = digitalRead(ldr_pin);
+    sendHeartbeat(ledOnOff, lightSensorState);
+ 
+}
 
-    buttonState = readButton();
- 
-    sendHeartbeat(buttonState, lightSensorState);
- 
+
+void turnOnLed(int ledOnOff){
+
+    if (ledOnOff){
+         digitalWrite(PULSE_LED_PIN, HIGH);
+    }
+    else{
+        digitalWrite(PULSE_LED_PIN, LOW);
+    }    
 }
 
 int readButton(){
 
-    static int buttonState = 0; 
+    static int SwitchOnOff = 0;
+    static unsigned long lastDebounceTime = 0;  // the last time the output pin was toggled
+    static unsigned long debounceDelay = 50UL;
 
-    buttonState = digitalRead(PUSH_BUTTON);
+    int reading = digitalRead(PUSH_BUTTON);
+    static int previouseReading = LOW;
 
-    return buttonState;
+
+    if (reading == HIGH && previouseReading == LOW && (millis() - lastDebounceTime) > debounceDelay) {
+        // whatever the reading is at, it's been there for longer
+        // than the debounce delay, so take it as the actual current state:
+        if (SwitchOnOff == HIGH)
+            SwitchOnOff = LOW;
+        else
+            SwitchOnOff = HIGH;
+        
+        lastDebounceTime = millis();
+    }
+  
+    previouseReading = reading;
+
+    return SwitchOnOff;
 }
 
 
@@ -127,27 +159,22 @@ void sendHeartbeat(int buttonState, int lightSensorState){
     static unsigned long lastRun = millis();
     static bool outputValue = false;
 
+    String uploadString;
 
-    if ((millis() - lastRun) > 1000) {
+    if ((millis() - lastRun) > 500) {
         lastRun = millis();
         outputValue = !outputValue;
         //Serial.print(outputValue);
-        if (outputValue) {
-            BTSerial.write("1");
-            if (buttonState == 1){
-                BTSerial.write("P");
-            }
-            //   Serial.write("1");
-            // digitalWrite(PULSE_LED_PIN, HIGH);   // turn the LED on
-        }
-        else {
-            BTSerial.write("0");
-            if (buttonState == 1){
-                BTSerial.write("R");
-            }
-            //   Serial.write("0");
-            // digitalWrite(PULSE_LED_PIN, LOW);   // turn the LED off
-        }
+        uploadString = "?" + String(outputValue) + "|" + String(buttonState) + "|" + String(lightSensorState) + ";";
+        Serial.println(uploadString);
+        BTSerial.println(uploadString);
+        // if (outputValue) {
+        //     BTSerial.write("1");
+
+        // }
+        // else {
+        //     BTSerial.write("0");
+        // }
     }
 }
 
