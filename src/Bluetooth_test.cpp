@@ -4,11 +4,6 @@
 // This is an adaptation of the variants\bluetooth_reg_testing.cpp in this repo
 // I removed extra code, proceduralized the code, stwitched some variable to statics in favor better practices  
 
-// LED leads connected to PWM pins
-// const int RED_LED_PIN = 3;
-// const int GREEN_LED_PIN = 5;
-// const int BLUE_LED_PIN = 6;
-// const int PULSE_LED_PIN = 13;
 
 const int RED_LED_PIN = 3;
 const int GREEN_LED_PIN = 5;
@@ -168,13 +163,6 @@ void sendHeartbeat(int buttonState, int lightSensorState){
         uploadString = "?" + String(outputValue) + "|" + String(buttonState) + "|" + String(lightSensorState) + ";";
         Serial.println(uploadString);
         BTSerial.println(uploadString);
-        // if (outputValue) {
-        //     BTSerial.write("1");
-
-        // }
-        // else {
-        //     BTSerial.write("0");
-        // }
     }
 }
 
